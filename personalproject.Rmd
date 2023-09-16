@@ -1,0 +1,309 @@
+---
+title: "PERSONAL PROJECT"
+author: "Veronica Pham"
+date: "2023-09-12"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+# INTRODUCTION:
+
+A pneumonia outbreak with an initially unknown cause was first reported internationally from Wuhan, China, on December 31, 2019. This virus is now commonly known as COVID-19 or, informally, as Coronavirus. Since that time, the global community has been actively combatting this pandemic. Various measures have been implemented to slow the spread of the virus, a practice often referred to as "flattening the curve." Unfortunately, the world has witnessed the loss of many lives due to the pandemic, and social distancing measures have been put in place to mitigate its impact.
+
+## This report will aim to address the following key questions related to the COVID-19 pandemic:
+
+1. **Which countries have had the highest number of deaths due to COVID-19?**
+   - This question seeks to identify the countries that have experienced the most fatalities as a result of the virus.
+
+2. **Which countries have had the highest number of positive cases against the number of tests?**
+   - This question focuses on countries where the ratio of positive cases to the number of tests conducted is the highest, indicating the severity of the outbreak in those regions.
+
+3. **Which countries have made the best effort in terms of the number of COVID-19 tests conducted related to their population?**
+   - Here, we will determine which countries have conducted a substantial number of tests relative to their population size, reflecting their proactive testing efforts.
+
+4. **Which countries were ultimately the most and least affected related to their population?**
+   - This question aims to identify the countries that have been significantly impacted by COVID-19 in relation to their population size, helping to assess the extent of the pandemic's effect in different regions.
+
+By analyzing data and statistics, we can provide insights into the countries that have faced the greatest challenges and those that have demonstrated effective strategies in managing the pandemic.
+
+
+---------
+
+```{r}
+# Set a CRAN mirror
+options(repos = c(CRAN = "https://cran.rstudio.com/"))
+```
+
+
+```{r setup, include=FALSE}
+library(readr)
+read.csv("covid19.csv")
+```
+
+
+```{r}
+covid_df <- read.csv("covid19.csv")
+dim(covid_df)
+vector_cols <- colnames(covid_df)
+vector_cols
+head(covid_df)
+```
+
+
+The "vector_cols" variable will represent a character vector containing the column names of the "covid_df" dataframe. This character vector is essentially a list of strings, where each string represents a column name in the dataframe. The colnames function extracts the column names from the dataframe and stores them as elements in this vector.
+
+
+```{r}
+
+install.packages("tibble")
+library(tibble)
+
+```
+
+
+```{r}
+glimpse(covid_df)
+```
+
+
+Provides a concise summary of the dataset's structure. It displays key information such as the number of observations (rows) and variables (columns) in the dataset.
+
+
+```{r}
+install.packages("dplyr")
+library(dplyr)
+```
+
+
+```{r}
+covid_df <- covid_df %>% filter(Province_State == "All States")
+covid_df <- covid_df %>% select(-Province_State)
+covid_df_all_states <- covid_df
+```
+
+
+```{r}
+library(dplyr)
+selected_columns <- covid_df_all_states %>% select(Date, Continent_Name, Two_Letter_Country_Code, positive, hospitalized, recovered, death, total_tested)
+covid_df_all_states_cumulative <- selected_columns
+```
+
+
+```{r}
+library(dplyr)
+selected_columns2 <- covid_df_all_states %>% select(Date, Country_Region, active, hospitalizedCurr, daily_tested, daily_positive)
+covid_df_all_states_daily <- selected_columns2
+```
+
+
+```{r}
+
+library(dplyr)
+# Summarize and filter the data
+covid_df_all_states_cumulative_max <- covid_df_all_states_cumulative %>%
+  group_by(Continent_Name, Two_Letter_Country_Code) %>%
+  summarize(Max_Death = max(death, na.rm = TRUE)) %>%
+  filter(Max_Death > 0)
+print(covid_df_all_states_cumulative_max)
+
+```
+
+
+```{r}
+install.packages("ggplot2")  
+library(ggplot2)  # Load the ggplot2 library
+
+# Create the ggplot visualization
+
+# Create a bar chart
+ggplot(data = covid_df_all_states_cumulative_max, aes(x = Two_Letter_Country_Code, y = Max_Death, fill = Continent_Name)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8) +
+  labs(x = "Country Code", y = "Maximum Death Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+
+```
+
+
+```{r}
+
+# Sort the data by Max_Death in descending order
+sorted_data <- covid_df_all_states_cumulative_max %>%
+  arrange(desc(Max_Death))
+
+# Select the top three affected countries
+top_3_countries <- head(sorted_data$Two_Letter_Country_Code, 3)
+
+# Store the findings in a character vector
+death_top_3 <- as.character(top_3_countries)
+print(death_top_3)
+
+```
+
+
+```{r}
+# Make sure to have the dplyr package installed and loaded
+install.packages("dplyr")
+library(dplyr)
+
+# Summarize and arrange the data
+covid_df_all_states_daily_sum <- covid_df_all_states_daily %>%
+  group_by(Country_Region) %>%
+  summarize(
+    `tested` = sum(daily_tested, na.rm = TRUE),
+    `positive` = sum(daily_positive, na.rm = TRUE),
+    `active` = sum(active, na.rm = TRUE),
+    `hospitalized` = sum(hospitalizedCurr, na.rm = TRUE)
+  ) %>%
+  arrange(desc(`tested`))
+
+# display it in data frame
+covid_df_all_states_daily_sum
+```
+
+
+```{r}
+covid_top_10 <- head(covid_df_all_states_daily_sum, 10)
+```
+
+
+```{r}
+# Create the countries vector
+countries <- covid_top_10$Country_Region
+
+# Create the tested_cases vector
+tested_cases <- covid_top_10$tested
+
+# Create the positive_cases vector
+positive_cases <- covid_top_10$positive
+
+# Create the active_cases vector
+active_cases <- covid_top_10$active
+
+# Create the hospitalized_cases vector
+hospitalized_cases <- covid_top_10$hospitalized
+
+# Name the vectors using the names() function
+names(tested_cases) <- countries
+names(positive_cases) <- countries
+names(active_cases) <- countries
+names(hospitalized_cases) <- countries
+
+```
+
+
+```{r}
+# Calculate the positive-to-tested ratio
+positive_to_tested_ratio <- positive_cases / tested_cases
+
+# Create a named vector
+positive_tested <- setNames(positive_to_tested_ratio, countries)
+
+# Sort the named vector in descending order
+positive_tested_sorted <- sort(positive_tested, decreasing = TRUE)
+
+# Get the top three countries with the highest ratio
+positive_tested_top_3 <- head(positive_tested_sorted, 3)
+
+# Display the top three countries and their ratios
+positive_tested_top_3
+
+```
+
+
+```{r}
+# Create the matrix by combining the vectors
+covid_mat <- cbind(tested_cases, positive_cases, active_cases, hospitalized_cases)
+
+# Create the population vector
+population <- c(331002651, 145934462, 60461826, 1380004385, 84339067, 37742154, 67886011, 25499884, 32971854, 37846611)
+
+# Perform the multiplication and division
+covid_mat <- covid_mat * 100 / population
+
+# Display the resulting matrix
+covid_mat
+
+```
+
+
+```{r}
+# compute the ranking for each column
+tested_cases_rank <- rank(covid_mat[, "tested_cases"])
+positive_cases_rank <- rank(covid_mat[, "positive_cases"])
+active_cases_rank <- rank(covid_mat[, "active_cases"])
+hospitalized_cases_rank <- rank(covid_mat[, "hospitalized_cases"])
+
+# combine the ranking vectors into a matrix 
+covid_mat_rank <- rbind(tested_cases_rank, positive_cases_rank, active_cases_rank, hospitalized_cases_rank)
+print(covid_mat_rank)
+
+# display the first row
+first_row <- covid_mat_rank[1,]
+print(first_row)
+```
+
+
+```{r}
+# remove first row of matrix
+covid_mat_rank_remove_first_row <- covid_mat_rank[-1,]
+
+# compute the sum of the remaining rows using colSum
+aggregated_sum <- colSums(covid_mat_rank_remove_first_row)
+print(aggregated_sum)
+```
+
+
+```{r}
+# Calculate the positive-to-tested ratio
+positive_to_tested_ratio <- positive_cases / tested_cases
+
+# Create a named vector
+positive_tested <- setNames(positive_to_tested_ratio, countries)
+
+# Sort the named vector in ascending order
+positive_tested_sorted <- sort(positive_tested, decreasing = FALSE)
+
+# Get the top three countries with the lowest ratio (best effort)
+best_effort_tested_cased_top_3 <- head(positive_tested_sorted, 3)
+
+# Display the top three countries with the best testing effort
+best_effort_tested_cased_top_3
+
+```
+
+
+```{r}
+# Calculate the positive-to-tested ratio
+positive_to_tested_ratio <- positive_cases / tested_cases
+
+# Create a named vector
+positive_tested <- setNames(positive_to_tested_ratio, countries)
+
+# Find the most affected country
+most_affected_country <- names(positive_tested[which.max(positive_tested)])
+
+# Find the least affected country
+least_affected_country <- names(positive_tested[which.min(positive_tested)])
+
+# Display the most and least affected countries
+most_affected_country
+least_affected_country
+```
+
+
+# CONCLUSION:
+
+In conclusion, the analysis reveals significant insights into the impact of COVID-19 across various countries:
+
+1. **Highest Number of Deaths**: The United States, Italy, and the United Kingdom (Great Britain and Northern Ireland) are the top three countries with the highest number of COVID-19-related deaths.
+
+2. **Highest Positive Tests**: The United Kingdom leads in the number of positive COVID-19 tests, followed by the United States and Turkey.
+
+3. **Best Testing Efforts**: Australia, India, and Poland stand out for their commendable testing efforts, considering their respective population sizes.
+
+4. **Most and Least Affected**: The United Kingdom has experienced a substantial impact relative to its population, whereas Australia has been relatively less affected in terms of population size.
+
+These findings shed light on the diverse responses and outcomes of countries in managing the COVID-19 pandemic, reflecting the global challenges and successes in combating the virus.
